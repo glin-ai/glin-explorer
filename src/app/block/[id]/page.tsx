@@ -1,11 +1,10 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { substrateClient, type BlockInfo } from '@/lib/substrate/client';
+import { substrateClient, type BlockInfo, type ExtrinsicInfo } from '@/lib/substrate/client';
 import { useExplorerStore } from '@/store/explorer-store';
-import { formatDistanceToNow } from 'date-fns';
-import { ArrowLeft, Copy, Check, Clock, Hash, Box, FileText, Loader2 } from 'lucide-react';
+import { ArrowLeft, Copy, Check, Box, FileText, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function BlockDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -16,13 +15,7 @@ export default function BlockDetailsPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isConnected) {
-      loadBlock();
-    }
-  }, [resolvedParams.id, isConnected]);
-
-  const loadBlock = async () => {
+  const loadBlock = useCallback(async () => {
     try {
       setLoading(true);
       const blockData = /^\d+$/.test(resolvedParams.id)
@@ -34,7 +27,13 @@ export default function BlockDetailsPage({ params }: { params: Promise<{ id: str
     } finally {
       setLoading(false);
     }
-  };
+  }, [resolvedParams.id]);
+
+  useEffect(() => {
+    if (isConnected) {
+      loadBlock();
+    }
+  }, [isConnected, loadBlock]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -216,7 +215,7 @@ export default function BlockDetailsPage({ params }: { params: Promise<{ id: str
             </h2>
           </div>
           <div className="divide-y">
-            {block.extrinsics.map((ext: any, index: number) => (
+            {block.extrinsics.map((ext: ExtrinsicInfo, index: number) => (
               <div key={index} className="p-4 hover:bg-secondary/50 transition-colors">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
                   <div className="flex items-center space-x-4">

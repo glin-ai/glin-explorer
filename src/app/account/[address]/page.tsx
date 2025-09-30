@@ -12,6 +12,7 @@ import { backendClient } from '@/lib/api/backend-client';
 import { useExplorerStore } from '@/store/explorer-store';
 import { ArrowLeft, Copy, Check, Wallet, TrendingUp, Award, Cpu, Loader2 } from 'lucide-react';
 import { formatNumber } from '@/lib/utils';
+import { useCallback } from 'react';
 
 export default function AccountDetailsPage({ params }: { params: Promise<{ address: string }> }) {
   const resolvedParams = use(params);
@@ -20,17 +21,11 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ addre
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [providerStake, setProviderStake] = useState<ProviderStake | null>(null);
   const [testnetPoints, setTestnetPoints] = useState<TestnetPoints | null>(null);
-  const [backendPoints, setBackendPoints] = useState<any>(null);
+  const [backendPoints, setBackendPoints] = useState<{ address: string; points: number; rank: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    if (isConnected) {
-      loadAccountData();
-    }
-  }, [resolvedParams.address, isConnected]);
-
-  const loadAccountData = async () => {
+  const loadAccountData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -57,7 +52,13 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ addre
     } finally {
       setLoading(false);
     }
-  };
+  }, [resolvedParams.address]);
+
+  useEffect(() => {
+    if (isConnected) {
+      loadAccountData();
+    }
+  }, [isConnected, loadAccountData]);
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(resolvedParams.address);

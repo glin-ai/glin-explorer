@@ -4,7 +4,8 @@ import { useExplorerStore } from '@/store/explorer-store';
 import { StatsCard } from '@/components/cards/stats-card';
 import { LatestBlocks } from '@/components/blocks/latest-blocks';
 import { formatNumber } from '@/lib/utils';
-import { Blocks, Activity, Users, Hash, Loader2 } from 'lucide-react';
+import { Blocks, Activity, Users, Hash } from 'lucide-react';
+import { SkeletonCard } from '@/components/ui/skeleton';
 
 export default function HomePage() {
   const {
@@ -15,26 +16,7 @@ export default function HomePage() {
     networkStats
   } = useExplorerStore();
 
-  if (isConnecting) {
-    return (
-      <div className="container mx-auto py-12">
-        <div className="flex flex-col items-center justify-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-          <p className="text-muted-foreground">Connecting to GLIN Testnet...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isConnected) {
-    return (
-      <div className="container mx-auto py-12">
-        <div className="flex flex-col items-center justify-center space-y-4">
-          <p className="text-muted-foreground">Failed to connect to chain</p>
-        </div>
-      </div>
-    );
-  }
+  const isLoading = isConnecting || !isConnected;
 
   return (
     <div className="container mx-auto py-8 space-y-8">
@@ -50,30 +32,41 @@ export default function HomePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatsCard
-          title="Latest Block"
-          value={networkStats?.blockNumber ? formatNumber(networkStats.blockNumber) : '0'}
-          description="Current chain height"
-          icon={Blocks}
-        />
-        <StatsCard
-          title="Validators"
-          value={networkStats?.validatorCount || 0}
-          description="Active validators"
-          icon={Users}
-        />
-        <StatsCard
-          title="Transactions"
-          value={latestBlocks.reduce((acc, block) => acc + (block.extrinsics?.length || 0), 0)}
-          description="In last 15 blocks"
-          icon={Hash}
-        />
-        <StatsCard
-          title="Network"
-          value={chainInfo?.name || 'GLIN'}
-          description={`Token: ${chainInfo?.tokenSymbol || 'tGLIN'}`}
-          icon={Activity}
-        />
+        {isLoading ? (
+          <>
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </>
+        ) : (
+          <>
+            <StatsCard
+              title="Latest Block"
+              value={networkStats?.blockNumber ? formatNumber(networkStats.blockNumber) : '0'}
+              description="Current chain height"
+              icon={Blocks}
+            />
+            <StatsCard
+              title="Validators"
+              value={networkStats?.validatorCount || 0}
+              description="Active validators"
+              icon={Users}
+            />
+            <StatsCard
+              title="Transactions"
+              value={latestBlocks.reduce((acc, block) => acc + (block.extrinsics?.length || 0), 0)}
+              description="In last 15 blocks"
+              icon={Hash}
+            />
+            <StatsCard
+              title="Network"
+              value={chainInfo?.name || 'GLIN'}
+              description={`Token: ${chainInfo?.tokenSymbol || 'tGLIN'}`}
+              icon={Activity}
+            />
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

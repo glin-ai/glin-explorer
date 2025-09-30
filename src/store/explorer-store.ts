@@ -12,7 +12,15 @@ interface ExplorerState {
   currentBlock: BlockInfo | null;
 
   // Network
-  networkStats: any;
+  networkStats: {
+    chain: string;
+    nodeName: string;
+    nodeVersion: string;
+    blockNumber: number;
+    blockHash: string;
+    validatorCount: number;
+    validators: string[];
+  } | null;
   validators: string[];
 
   // Actions
@@ -130,6 +138,15 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
           }
         });
       }
+
+      // Clear the "isNew" flag after 10 seconds for animation purposes
+      setTimeout(() => {
+        const currentBlocks = get().latestBlocks;
+        const updatedBlocksWithoutNew = currentBlocks.map(b =>
+          b.hash === block.hash ? { ...b, isNew: false } : b
+        );
+        set({ latestBlocks: updatedBlocksWithoutNew });
+      }, 10000);
     });
   }
 }));

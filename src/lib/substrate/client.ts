@@ -8,6 +8,19 @@ export interface ChainInfo {
   ss58Format: number;
 }
 
+export interface ExtrinsicInfo {
+  hash: string;
+  method: string;
+  section: string;
+  args?: string[];
+}
+
+export interface EventInfo {
+  section: string;
+  method: string;
+  data: Record<string, unknown>;
+}
+
 export interface BlockInfo {
   number: number;
   hash: string;
@@ -16,7 +29,9 @@ export interface BlockInfo {
   extrinsicsRoot: string;
   author?: string;
   timestamp?: number;
-  extrinsics?: any[];
+  extrinsics?: ExtrinsicInfo[];
+  isNew?: boolean;  // Flag to mark newly received blocks for animation
+  receivedAt?: number;  // Client-side timestamp when block was received
 }
 
 export interface TransactionInfo {
@@ -25,11 +40,11 @@ export interface TransactionInfo {
   blockHash: string;
   method: string;
   section: string;
-  args: any[];
+  args: string[];
   signer?: string;
   success: boolean;
   fee?: string;
-  events?: any[];
+  events?: EventInfo[];
 }
 
 export interface AccountInfo {
@@ -78,14 +93,57 @@ export class SubstrateClient {
 
   constructor(private endpoint: string = process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'wss://glin-rpc-production.up.railway.app') {}
 
+  // Extract timestamp from block extrinsics (timestamp.set call)
+  private extractTimestamp(extrinsics: Array<{ method: { section: string; method: string; args: Array<{ toString: () => string }> } }>): number | undefined {
+    for (const ext of extrinsics) {
+      if (ext.method.section === 'timestamp' && ext.method.method === 'set') {
+        try {
+          // Timestamp is in milliseconds in the extrinsic args
+          const timestamp = ext.method.args[0];
+          return Number(timestamp.toString());
+        } catch (error) {
+          console.error('Failed to extract timestamp:', error);
+        }
+      }
+    }
+    return undefined;
+  }
+
   async connect(): Promise<void> {
     if (this.api?.isConnected) return;
 
-    this.provider = new WsProvider(this.endpoint);
-    this.api = await ApiPromise.create({ provider: this.provider });
-    await this.api.isReady;
+    try {
+      // Create provider with auto-reconnect and timeout settings
+      this.provider = new WsProvider(this.endpoint, 1000, {
+        // Auto-reconnect on disconnect
+      }, 30000); // 30 second timeout
 
-    console.log('Connected to chain:', this.api.runtimeChain.toString());
+      this.api = await ApiPromise.create({
+        provider: this.provider,
+        throwOnConnect: false,
+        throwOnUnknown: false
+      });
+
+      await this.api.isReady;
+
+      // Set up disconnect handler
+      this.provider.on('disconnected', () => {
+        console.log('WebSocket disconnected, will auto-reconnect...');
+      });
+
+      this.provider.on('connected', () => {
+        console.log('WebSocket connected');
+      });
+
+      this.provider.on('error', (error) => {
+        console.error('WebSocket error:', error);
+      });
+
+      console.log('Connected to chain:', this.api.runtimeChain.toString());
+    } catch (error) {
+      console.error('Failed to connect to chain:', error);
+      throw error;
+    }
   }
 
   async disconnect(): Promise<void> {
@@ -107,11 +165,15 @@ export class SubstrateClient {
     const api = this.getApi();
     const properties = api.registry.getChainProperties();
 
+    const tokenSymbolJSON = properties?.tokenSymbol.toJSON();
+    const tokenDecimalsJSON = properties?.tokenDecimals.toJSON();
+    const ss58FormatJSON = properties?.ss58Format.toJSON();
+
     return {
       name: api.runtimeChain.toString(),
-      tokenSymbol: properties?.tokenSymbol.toJSON()?.[0] as string || 'tGLIN',
-      tokenDecimals: properties?.tokenDecimals.toJSON()?.[0] as number || 18,
-      ss58Format: properties?.ss58Format.toJSON() as number || 42
+      tokenSymbol: (Array.isArray(tokenSymbolJSON) ? tokenSymbolJSON[0] as string : 'tGLIN') || 'tGLIN',
+      tokenDecimals: (Array.isArray(tokenDecimalsJSON) ? tokenDecimalsJSON[0] as number : 18) || 18,
+      ss58Format: (typeof ss58FormatJSON === 'number' ? ss58FormatJSON : 42) || 42
     };
   }
 
@@ -127,17 +189,23 @@ export class SubstrateClient {
       const signedBlock = await api.rpc.chain.getBlock(blockHash);
       const header = signedBlock.block.header;
 
+      const extrinsics = signedBlock.block.extrinsics.map(ext => ({
+        hash: ext.hash.toString(),
+        method: ext.method.method,
+        section: ext.method.section
+      }));
+
+      const timestamp = this.extractTimestamp(signedBlock.block.extrinsics);
+
       blocks.push({
         number: header.number.toNumber(),
         hash: blockHash.toString(),
         parentHash: header.parentHash.toString(),
         stateRoot: header.stateRoot.toString(),
         extrinsicsRoot: header.extrinsicsRoot.toString(),
-        extrinsics: signedBlock.block.extrinsics.map(ext => ({
-          hash: ext.hash.toString(),
-          method: ext.method.method,
-          section: ext.method.section
-        }))
+        extrinsics,
+        timestamp,
+        receivedAt: Date.now()
       });
     }
 
@@ -154,24 +222,35 @@ export class SubstrateClient {
     const signedBlock = await api.rpc.chain.getBlock(blockHash);
     const header = signedBlock.block.header;
 
+    const extrinsics = signedBlock.block.extrinsics.map(ext => ({
+      hash: ext.hash.toString(),
+      method: ext.method.method,
+      section: ext.method.section,
+      args: ext.args.map(arg => arg.toString())
+    }));
+
+    const timestamp = this.extractTimestamp(signedBlock.block.extrinsics);
+
     return {
       number: header.number.toNumber(),
       hash: blockHash.toString(),
       parentHash: header.parentHash.toString(),
       stateRoot: header.stateRoot.toString(),
       extrinsicsRoot: header.extrinsicsRoot.toString(),
-      extrinsics: signedBlock.block.extrinsics.map(ext => ({
-        hash: ext.hash.toString(),
-        method: ext.method.method,
-        section: ext.method.section,
-        args: ext.args.map(arg => arg.toString())
-      }))
+      extrinsics,
+      timestamp,
+      receivedAt: Date.now()
     };
   }
 
-  async getAccountBalance(address: string): Promise<any> {
+  async getAccountBalance(address: string): Promise<{
+    free: string;
+    reserved: string;
+    frozen: string;
+  }> {
     const api = this.getApi();
-    const { data } = await api.query.system.account(address);
+    const accountData = await api.query.system.account(address);
+    const data = (accountData as unknown as { data: { free: { toString: () => string }; reserved: { toString: () => string }; frozen: { toString: () => string } } }).data;
 
     return {
       free: data.free.toString(),
@@ -185,14 +264,34 @@ export class SubstrateClient {
     let unsubscribe: (() => void) | null = null;
 
     api.rpc.chain.subscribeNewHeads(async (header: Header) => {
-      const block: BlockInfo = {
-        number: header.number.toNumber(),
-        hash: header.hash.toString(),
-        parentHash: header.parentHash.toString(),
-        stateRoot: header.stateRoot.toString(),
-        extrinsicsRoot: header.extrinsicsRoot.toString()
-      };
-      callback(block);
+      try {
+        // Fetch full block to get extrinsics and timestamp
+        const blockHash = header.hash.toString();
+        const signedBlock = await api.rpc.chain.getBlock(blockHash);
+
+        const extrinsics = signedBlock.block.extrinsics.map(ext => ({
+          hash: ext.hash.toString(),
+          method: ext.method.method,
+          section: ext.method.section
+        }));
+
+        const timestamp = this.extractTimestamp(signedBlock.block.extrinsics);
+
+        const block: BlockInfo = {
+          number: header.number.toNumber(),
+          hash: blockHash,
+          parentHash: header.parentHash.toString(),
+          stateRoot: header.stateRoot.toString(),
+          extrinsicsRoot: header.extrinsicsRoot.toString(),
+          extrinsics,
+          timestamp,
+          receivedAt: Date.now(),
+          isNew: true  // Mark as new for animation
+        };
+        callback(block);
+      } catch (error) {
+        console.error('Error processing new block:', error);
+      }
     }).then(unsub => {
       unsubscribe = unsub;
     });
@@ -208,10 +307,18 @@ export class SubstrateClient {
     const api = this.getApi();
     // GLIN chain uses Aura consensus, not Session pallet
     const authorities = await api.query.aura.authorities();
-    return authorities.map((v: any) => v.toString());
+    return (authorities as unknown as Array<{ toString: () => string }>).map((v) => v.toString());
   }
 
-  async getNetworkStats(): Promise<any> {
+  async getNetworkStats(): Promise<{
+    chain: string;
+    nodeName: string;
+    nodeVersion: string;
+    blockNumber: number;
+    blockHash: string;
+    validatorCount: number;
+    validators: string[];
+  }> {
     const api = this.getApi();
     const [chain, nodeName, nodeVersion] = await Promise.all([
       api.rpc.system.chain(),
@@ -244,7 +351,7 @@ export class SubstrateClient {
       const task = await api.query.taskRegistry.tasks(taskId);
       if (task.isEmpty) return null;
 
-      const taskData = task.toJSON() as any;
+      const taskData = task.toJSON() as { creator: string; bounty: string; status: string; modelType?: string; providers?: string[] };
       return {
         id: taskId,
         creator: taskData.creator,
@@ -265,7 +372,7 @@ export class SubstrateClient {
       const entries = await api.query.taskRegistry.tasks.entries();
       return entries.map(([key, value]) => {
         const taskId = key.args[0].toString();
-        const taskData = value.toJSON() as any;
+        const taskData = value.toJSON() as { creator: string; bounty: string; status: string; modelType?: string; providers?: string[] };
         return {
           id: taskId,
           creator: taskData.creator,
@@ -290,7 +397,7 @@ export class SubstrateClient {
       const provider = await api.query.providerStaking.providers(address);
       if (provider.isEmpty) return null;
 
-      const providerData = provider.toJSON() as any;
+      const providerData = provider.toJSON() as { stake: string; reputation?: number; tasksCompleted?: number; isActive?: boolean };
       return {
         address,
         stake: providerData.stake,
@@ -310,7 +417,7 @@ export class SubstrateClient {
       const entries = await api.query.providerStaking.providers.entries();
       return entries.map(([key, value]) => {
         const address = key.args[0].toString();
-        const providerData = value.toJSON() as any;
+        const providerData = value.toJSON() as { stake: string; reputation?: number; tasksCompleted?: number; isActive?: boolean };
         return {
           address,
           stake: providerData.stake,
@@ -328,8 +435,8 @@ export class SubstrateClient {
   /**
    * RewardDistribution Pallet
    */
-  async getRewardHistory(taskId?: string): Promise<RewardInfo[]> {
-    const api = this.getApi();
+  async getRewardHistory(): Promise<RewardInfo[]> {
+    this.getApi();
     try {
       // This would require event querying or storage mapping
       // For now, we'll return empty array and rely on backend
@@ -349,7 +456,7 @@ export class SubstrateClient {
       const points = await api.query.testnetPoints.points(address);
       if (points.isEmpty) return null;
 
-      const pointsData = points.toJSON() as any;
+      const pointsData = points.toJSON() as { points?: number; lastUpdated?: number };
       return {
         address,
         points: pointsData.points || 0,
@@ -367,14 +474,22 @@ export class SubstrateClient {
   async getAccountInfo(address: string): Promise<AccountInfo> {
     const api = this.getApi();
     const accountData = await api.query.system.account(address);
+    const acc = accountData as unknown as {
+      nonce: { toNumber: () => number };
+      data: {
+        free: { toString: () => string };
+        reserved: { toString: () => string };
+        frozen: { toString: () => string };
+      };
+    };
 
     return {
       address,
-      nonce: accountData.nonce.toNumber(),
+      nonce: acc.nonce.toNumber(),
       balance: {
-        free: accountData.data.free.toString(),
-        reserved: accountData.data.reserved.toString(),
-        frozen: accountData.data.frozen.toString()
+        free: acc.data.free.toString(),
+        reserved: acc.data.reserved.toString(),
+        frozen: acc.data.frozen.toString()
       }
     };
   }
@@ -395,17 +510,21 @@ export class SubstrateClient {
       const events = await apiAt.query.system.events();
 
       // Filter events for this extrinsic
-      const extrinsicEvents = events
-        .filter((record: any) => record.phase.isApplyExtrinsic &&
+      type EventRecord = {
+        phase: { isApplyExtrinsic: boolean; asApplyExtrinsic: { toNumber: () => number } };
+        event: { section: string; method: string; data: { toJSON: () => Record<string, unknown> } };
+      };
+      const extrinsicEvents = (events as unknown as EventRecord[])
+        .filter((record) => record.phase.isApplyExtrinsic &&
                 record.phase.asApplyExtrinsic.toNumber() === extrinsicIndex)
-        .map((record: any) => ({
+        .map((record) => ({
           section: record.event.section,
           method: record.event.method,
           data: record.event.data.toJSON()
         }));
 
       const success = extrinsicEvents.some(
-        (e: any) => e.section === 'system' && e.method === 'ExtrinsicSuccess'
+        (e: EventInfo) => e.section === 'system' && e.method === 'ExtrinsicSuccess'
       );
 
       return {
@@ -430,9 +549,9 @@ export class SubstrateClient {
    */
   async search(query: string): Promise<{
     type: 'block' | 'transaction' | 'account' | 'task';
-    data: any;
+    data: BlockInfo | AccountInfo | Task;
   } | null> {
-    const api = this.getApi();
+    this.getApi();
 
     // Try as block number
     if (/^\d+$/.test(query)) {

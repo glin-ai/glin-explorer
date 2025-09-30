@@ -1,8 +1,8 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { substrateClient, type TransactionInfo } from '@/lib/substrate/client';
+import { substrateClient, type TransactionInfo, type EventInfo } from '@/lib/substrate/client';
 import { useExplorerStore } from '@/store/explorer-store';
 import { ArrowLeft, Copy, Check, CheckCircle2, XCircle, FileText, Zap, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -19,13 +19,7 @@ export default function TransactionDetailsPage({
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isConnected) {
-      loadTransaction();
-    }
-  }, [resolvedParams.blockHash, resolvedParams.index, isConnected]);
-
-  const loadTransaction = async () => {
+  const loadTransaction = useCallback(async () => {
     try {
       setLoading(true);
       const txData = await substrateClient.getTransaction(
@@ -38,7 +32,13 @@ export default function TransactionDetailsPage({
     } finally {
       setLoading(false);
     }
-  };
+  }, [resolvedParams.blockHash, resolvedParams.index]);
+
+  useEffect(() => {
+    if (isConnected) {
+      loadTransaction();
+    }
+  }, [isConnected, loadTransaction]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -232,7 +232,7 @@ export default function TransactionDetailsPage({
             </h2>
           </div>
           <div className="divide-y">
-            {tx.events.map((event: any, index: number) => (
+            {tx.events.map((event: EventInfo, index: number) => (
               <div key={index} className="p-4 hover:bg-secondary/50 transition-colors">
                 <div className="flex items-start space-x-4">
                   <div className="bg-purple-600/10 text-purple-600 px-3 py-1 rounded-lg text-sm font-medium shrink-0">

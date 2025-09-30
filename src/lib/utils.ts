@@ -28,6 +28,7 @@ export function formatHash(hash: string, chars: number = 8): string {
   return `${hash.slice(0, chars)}...${hash.slice(-chars)}`;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number

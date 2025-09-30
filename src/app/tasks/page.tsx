@@ -48,8 +48,8 @@ export default function TasksPage() {
     return formatNumber(value);
   };
 
-  const getTaskStatus = (status: string) => {
-    const statusMap: any = {
+  const getTaskStatus = (status: string): { label: string; color: string } => {
+    const statusMap: Record<string, { label: string; color: string }> = {
       Open: { label: 'Open', color: 'text-blue-600 bg-blue-600/10' },
       InProgress: { label: 'In Progress', color: 'text-yellow-600 bg-yellow-600/10' },
       Completed: { label: 'Completed', color: 'text-green-600 bg-green-600/10' },

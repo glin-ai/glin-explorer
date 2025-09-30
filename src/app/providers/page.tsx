@@ -210,7 +210,9 @@ export default function ProvidersPage() {
                         </Link>
                         {backendProvider?.gpuSpecs && (
                           <div className="text-xs text-muted-foreground mt-1">
-                            {backendProvider.gpuSpecs.model || 'GPU Info Available'}
+                            {typeof backendProvider.gpuSpecs === 'object' && backendProvider.gpuSpecs && 'model' in backendProvider.gpuSpecs
+                              ? String(backendProvider.gpuSpecs.model)
+                              : 'GPU Info Available'}
                           </div>
                         )}
                       </td>

@@ -1,28 +1,37 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { substrateClient } from '@/lib/substrate/client';
+import { substrateClient, type BlockInfo, type AccountInfo, type Task } from '@/lib/substrate/client';
 import { Search, Loader2, X } from 'lucide-react';
-import { debounce } from '@/lib/utils';
+
+type SearchResult = {
+  type: 'block' | 'transaction' | 'account' | 'task';
+  data: BlockInfo | AccountInfo | Task;
+} | null;
 
 export function GlobalSearch() {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
-  const [results, setResults] = useState<any>(null);
+  const [results, setResults] = useState<SearchResult>(null);
   const [showResults, setShowResults] = useState(false);
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
-  const performSearch = useCallback(
-    debounce(async (searchQuery: string) => {
-      if (!searchQuery.trim() || searchQuery.length < 3) {
-        setResults(null);
-        return;
-      }
+  useEffect(() => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
 
+    if (!query.trim() || query.length < 3) {
+      setResults(null);
+      return;
+    }
+
+    debounceTimer.current = setTimeout(async () => {
       setSearching(true);
       try {
-        const result = await substrateClient.search(searchQuery.trim());
+        const result = await substrateClient.search(query.trim());
         setResults(result);
       } catch (error) {
         console.error('Search failed:', error);
@@ -30,28 +39,29 @@ export function GlobalSearch() {
       } finally {
         setSearching(false);
       }
-    }, 500),
-    []
-  );
+    }, 500);
 
-  useEffect(() => {
-    performSearch(query);
-  }, [query, performSearch]);
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, [query]);
 
-  const handleSelect = (type: string, data: any) => {
+  const handleSelect = (type: string, data: BlockInfo | AccountInfo | Task) => {
     setShowResults(false);
     setQuery('');
     setResults(null);
 
     switch (type) {
       case 'block':
-        router.push(`/block/${data.number}`);
+        router.push(`/block/${'number' in data ? data.number : ''}`);
         break;
       case 'account':
-        router.push(`/account/${data.address}`);
+        router.push(`/account/${'address' in data ? data.address : ''}`);
         break;
       case 'task':
-        router.push(`/tasks/${data.id}`);
+        router.push(`/tasks/${'id' in data ? data.id : ''}`);
         break;
       default:
         break;
@@ -114,9 +124,9 @@ export function GlobalSearch() {
                 <div>
                   <div className="text-sm font-medium capitalize">{results.type}</div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    {results.type === 'block' && `Block #${results.data.number}`}
-                    {results.type === 'account' && `Account ${results.data.address.slice(0, 16)}...`}
-                    {results.type === 'task' && `Task ${results.data.id}`}
+                    {results.type === 'block' && 'number' in results.data && `Block #${results.data.number}`}
+                    {results.type === 'account' && 'address' in results.data && `Account ${results.data.address.slice(0, 16)}...`}
+                    {results.type === 'task' && 'id' in results.data && `Task ${results.data.id}`}
                   </div>
                 </div>
                 <div className="text-xs text-purple-600">View →</div>
@@ -126,7 +136,7 @@ export function GlobalSearch() {
 
           {!searching && !results && query.length >= 3 && (
             <div className="p-4 text-center text-muted-foreground text-sm">
-              No results found for "{query}"
+              No results found for &quot;{query}&quot;
             </div>
           )}
 

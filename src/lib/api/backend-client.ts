@@ -31,7 +31,7 @@ export interface ProviderInfo {
   stake: string;
   reputation: number;
   tasksCompleted: number;
-  gpuSpecs?: any;
+  gpuSpecs?: Record<string, unknown>;
 }
 
 export class BackendClient {
@@ -91,7 +91,7 @@ export class BackendClient {
   }
 
   // Analytics (optional - if backend provides)
-  async getNetworkAnalytics(): Promise<any> {
+  async getNetworkAnalytics(): Promise<Record<string, unknown>> {
     return this.request('/api/v1/analytics/network');
   }
 }
