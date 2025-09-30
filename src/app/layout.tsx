@@ -16,8 +16,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GLIN Explorer - Testnet Block Explorer",
+  title: "GlinScan - GLIN Blockchain Explorer",
   description: "Explore blocks, transactions, and network activity on the GLIN incentivized testnet",
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+  },
 };
 
 export default function RootLayout({
