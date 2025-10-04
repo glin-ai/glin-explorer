@@ -1,23 +1,26 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  substrateClient,
   type AccountInfo,
   type ProviderStake,
-  type TestnetPoints
-} from '@/lib/substrate/client';
+  type TestnetPoints,
+  formatGLIN
+} from '@glin-ai/sdk';
 import { backendClient } from '@/lib/api/backend-client';
 import { useExplorerStore } from '@/store/explorer-store';
+import { useContractInfo } from '@/hooks/useContractInfo';
+import { ContractInfoCard } from '@/components/contracts/contract-info-card';
+import { ContractInteraction } from '@/components/contracts/contract-interaction';
 import { ArrowLeft, Copy, Check, Wallet, TrendingUp, Award, Cpu, Loader2 } from 'lucide-react';
 import { formatNumber } from '@/lib/utils';
-import { useCallback } from 'react';
 
 export default function AccountDetailsPage({ params }: { params: Promise<{ address: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
-  const { isConnected, isConnecting } = useExplorerStore();
+  const { isConnected, isConnecting, client, providers: providersModule, points: pointsModule } = useExplorerStore();
+  const contractInfo = useContractInfo(resolvedParams.address);
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [providerStake, setProviderStake] = useState<ProviderStake | null>(null);
   const [testnetPoints, setTestnetPoints] = useState<TestnetPoints | null>(null);
@@ -26,14 +29,16 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ addre
   const [copied, setCopied] = useState(false);
 
   const loadAccountData = useCallback(async () => {
+    if (!client || !providersModule || !pointsModule) return;
+
     try {
       setLoading(true);
 
       // Load blockchain data
       const [accountData, providerData, pointsData] = await Promise.all([
-        substrateClient.getAccountInfo(resolvedParams.address),
-        substrateClient.getProviderStake(resolvedParams.address),
-        substrateClient.getTestnetPoints(resolvedParams.address)
+        client.getAccountInfo(resolvedParams.address),
+        providersModule.getProviderStake(resolvedParams.address),
+        pointsModule.getTestnetPoints(resolvedParams.address)
       ]);
 
       setAccount(accountData);
@@ -52,7 +57,7 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ addre
     } finally {
       setLoading(false);
     }
-  }, [resolvedParams.address]);
+  }, [resolvedParams.address, client, providersModule, pointsModule]);
 
   useEffect(() => {
     if (isConnected) {
@@ -67,9 +72,8 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ addre
   };
 
   const formatBalance = (balance: string) => {
-    const decimals = 18;
-    const value = BigInt(balance) / BigInt(10 ** decimals);
-    return formatNumber(Number(value));
+    const formatted = formatGLIN(BigInt(balance));
+    return formatNumber(parseFloat(formatted));
   };
 
   const truncateAddress = (addr: string) => {
@@ -252,6 +256,14 @@ export default function AccountDetailsPage({ params }: { params: Promise<{ addre
           </div>
         </div>
       </div>
+
+      {/* Contract Information */}
+      {contractInfo.isContract && contractInfo.codeHash && (
+        <>
+          <ContractInfoCard codeHash={contractInfo.codeHash} address={account.address} />
+          <ContractInteraction address={account.address} />
+        </>
+      )}
 
       {/* Provider Information */}
       {providerStake && (

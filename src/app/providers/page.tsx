@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { substrateClient, type ProviderStake } from '@/lib/substrate/client';
+import { type ProviderStake, formatGLIN } from '@glin-ai/sdk';
 import { backendClient, type ProviderInfo } from '@/lib/api/backend-client';
 import { useExplorerStore } from '@/store/explorer-store';
 import { Cpu, Loader2, TrendingUp, Award, CheckCircle2, XCircle } from 'lucide-react';
@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { formatNumber } from '@/lib/utils';
 
 export default function ProvidersPage() {
-  const { isConnected, isConnecting } = useExplorerStore();
+  const { isConnected, isConnecting, providers: providersModule } = useExplorerStore();
   const [providers, setProviders] = useState<ProviderStake[]>([]);
   const [backendProviders, setBackendProviders] = useState<ProviderInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,10 +22,12 @@ export default function ProvidersPage() {
   }, [isConnected]);
 
   const loadProviders = async () => {
+    if (!providersModule) return;
+
     try {
       setLoading(true);
       // Load from blockchain
-      const chainProviders = await substrateClient.getAllProviders();
+      const chainProviders = await providersModule.getAllProviders();
       setProviders(chainProviders);
 
       // Load from backend (enhanced data)
@@ -43,9 +45,8 @@ export default function ProvidersPage() {
   };
 
   const formatBalance = (balance: string) => {
-    const decimals = 18;
-    const value = Number(BigInt(balance) / BigInt(10 ** decimals));
-    return formatNumber(value);
+    const formatted = formatGLIN(BigInt(balance));
+    return formatNumber(parseFloat(formatted));
   };
 
   const filteredProviders = providers.filter((provider) => {

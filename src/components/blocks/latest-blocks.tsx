@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { formatHash, formatTimestamp } from '@/lib/utils';
 import { Blocks } from 'lucide-react';
-import type { BlockInfo } from '@/lib/substrate/client';
+import type { BlockInfo } from '@glin-ai/sdk';
 
 interface LatestBlocksProps {
   blocks: BlockInfo[];

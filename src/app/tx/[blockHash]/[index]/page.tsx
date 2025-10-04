@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { substrateClient, type TransactionInfo, type EventInfo } from '@/lib/substrate/client';
+import { type TransactionInfo, type EventInfo } from '@glin-ai/sdk';
 import { useExplorerStore } from '@/store/explorer-store';
 import { ArrowLeft, Copy, Check, CheckCircle2, XCircle, FileText, Zap, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -14,15 +14,17 @@ export default function TransactionDetailsPage({
 }) {
   const resolvedParams = use(params);
   const router = useRouter();
-  const { isConnected, isConnecting } = useExplorerStore();
+  const { isConnected, isConnecting, client } = useExplorerStore();
   const [tx, setTx] = useState<TransactionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
 
   const loadTransaction = useCallback(async () => {
+    if (!client) return;
+
     try {
       setLoading(true);
-      const txData = await substrateClient.getTransaction(
+      const txData = await client.getTransaction(
         resolvedParams.blockHash,
         parseInt(resolvedParams.index)
       );
@@ -32,7 +34,7 @@ export default function TransactionDetailsPage({
     } finally {
       setLoading(false);
     }
-  }, [resolvedParams.blockHash, resolvedParams.index]);
+  }, [resolvedParams.blockHash, resolvedParams.index, client]);
 
   useEffect(() => {
     if (isConnected) {

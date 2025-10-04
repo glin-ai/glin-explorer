@@ -7,7 +7,7 @@ import { useExplorerStore } from '@/store/explorer-store';
 import { GlobalSearch } from '@/components/search/global-search';
 import { GlinCoinIcon } from '@/components/icons/glin-coin-icon';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { Blocks, Activity, TrendingUp, Cpu, Award } from 'lucide-react';
+import { Blocks, Activity, TrendingUp, Cpu, Award, Rocket } from 'lucide-react';
 
 const navigation = [
   { name: 'Blocks', href: '/blocks', icon: Blocks },
@@ -15,6 +15,7 @@ const navigation = [
   { name: 'Tasks', href: '/tasks', icon: TrendingUp },
   { name: 'Providers', href: '/providers', icon: Cpu },
   { name: 'Leaderboard', href: '/leaderboard', icon: Award },
+  { name: 'Deploy', href: '/deploy-contract', icon: Rocket },
 ];
 
 export function Header() {

@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { substrateClient, type BlockInfo, type ExtrinsicInfo } from '@/lib/substrate/client';
+import { type BlockInfo, type ExtrinsicInfo } from '@glin-ai/sdk';
 import { useExplorerStore } from '@/store/explorer-store';
 import { ArrowLeft, Copy, Check, Box, FileText, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -10,24 +10,26 @@ import Link from 'next/link';
 export default function BlockDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
-  const { isConnected, isConnecting } = useExplorerStore();
+  const { isConnected, isConnecting, client } = useExplorerStore();
   const [block, setBlock] = useState<BlockInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
 
   const loadBlock = useCallback(async () => {
+    if (!client) return;
+
     try {
       setLoading(true);
       const blockData = /^\d+$/.test(resolvedParams.id)
-        ? await substrateClient.getBlock(parseInt(resolvedParams.id))
-        : await substrateClient.getBlock(resolvedParams.id);
+        ? await client.getBlock(parseInt(resolvedParams.id))
+        : await client.getBlock(resolvedParams.id);
       setBlock(blockData);
     } catch (error) {
       console.error('Failed to load block:', error);
     } finally {
       setLoading(false);
     }
-  }, [resolvedParams.id]);
+  }, [resolvedParams.id, client]);
 
   useEffect(() => {
     if (isConnected) {

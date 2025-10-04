@@ -2,19 +2,16 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { substrateClient, type BlockInfo, type AccountInfo, type Task } from '@/lib/substrate/client';
+import { type SearchResult, type BlockInfo, type AccountInfo, type Task, type TransactionInfo } from '@glin-ai/sdk';
+import { useExplorerStore } from '@/store/explorer-store';
 import { Search, Loader2, X } from 'lucide-react';
-
-type SearchResult = {
-  type: 'block' | 'transaction' | 'account' | 'task';
-  data: BlockInfo | AccountInfo | Task;
-} | null;
 
 export function GlobalSearch() {
   const router = useRouter();
+  const { client } = useExplorerStore();
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
-  const [results, setResults] = useState<SearchResult>(null);
+  const [results, setResults] = useState<SearchResult | null>(null);
   const [showResults, setShowResults] = useState(false);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -29,9 +26,11 @@ export function GlobalSearch() {
     }
 
     debounceTimer.current = setTimeout(async () => {
+      if (!client) return;
+
       setSearching(true);
       try {
-        const result = await substrateClient.search(query.trim());
+        const result = await client.search(query.trim());
         setResults(result);
       } catch (error) {
         console.error('Search failed:', error);
@@ -48,7 +47,7 @@ export function GlobalSearch() {
     };
   }, [query]);
 
-  const handleSelect = (type: string, data: BlockInfo | AccountInfo | Task) => {
+  const handleSelect = (type: string, data: BlockInfo | AccountInfo | Task | TransactionInfo) => {
     setShowResults(false);
     setQuery('');
     setResults(null);

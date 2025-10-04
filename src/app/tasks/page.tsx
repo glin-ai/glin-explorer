@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { substrateClient, type Task } from '@/lib/substrate/client';
+import { type Task, formatGLIN } from '@glin-ai/sdk';
 import { backendClient, type TaskInfo } from '@/lib/api/backend-client';
 import { useExplorerStore } from '@/store/explorer-store';
 import { TrendingUp, Loader2, ExternalLink, Users, Coins } from 'lucide-react';
@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { formatNumber } from '@/lib/utils';
 
 export default function TasksPage() {
-  const { isConnected, isConnecting } = useExplorerStore();
+  const { isConnected, isConnecting, tasks: tasksModule } = useExplorerStore();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [backendTasks, setBackendTasks] = useState<TaskInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,10 +22,12 @@ export default function TasksPage() {
   }, [isConnected]);
 
   const loadTasks = async () => {
+    if (!tasksModule) return;
+
     try {
       setLoading(true);
       // Load from blockchain
-      const chainTasks = await substrateClient.getAllTasks();
+      const chainTasks = await tasksModule.getAllTasks();
       setTasks(chainTasks);
 
       // Load from backend (enhanced data)
@@ -43,9 +45,8 @@ export default function TasksPage() {
   };
 
   const formatBalance = (balance: string) => {
-    const decimals = 18;
-    const value = Number(BigInt(balance) / BigInt(10 ** decimals));
-    return formatNumber(value);
+    const formatted = formatGLIN(BigInt(balance));
+    return formatNumber(parseFloat(formatted));
   };
 
   const getTaskStatus = (status: string): { label: string; color: string } => {
