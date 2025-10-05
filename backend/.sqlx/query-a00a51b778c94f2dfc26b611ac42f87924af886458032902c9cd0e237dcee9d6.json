@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM extrinsics WHERE hash = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "block_number",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "index",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "hash",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "signer",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "pallet",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "call",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "args",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 8,
+        "name": "success",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "a00a51b778c94f2dfc26b611ac42f87924af886458032902c9cd0e237dcee9d6"
+}

@@ -1,0 +1,36 @@
+[package]
+name = "glinscan-api"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "api"
+path = "src/main.rs"
+
+[dependencies]
+# Local dependencies
+glinscan-db = { path = "../db" }
+
+# Web server
+axum.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+
+# Database
+sqlx.workspace = true
+
+# Async
+tokio.workspace = true
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+
+# Utilities
+anyhow.workspace = true
+chrono.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+dotenvy.workspace = true

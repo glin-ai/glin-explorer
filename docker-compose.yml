@@ -1,0 +1,90 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16
+    container_name: glinscan-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: glinscan-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Blockchain Indexer
+  indexer:
+    build:
+      context: ..
+      dockerfile: glin-explorer/backend/Dockerfile
+    container_name: glinscan-indexer
+    command: indexer
+    environment:
+      RPC_URL: ${RPC_URL}
+      DATABASE_URL: ${DATABASE_URL}
+      RUST_LOG: ${RUST_LOG}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # REST API Server
+  api:
+    build:
+      context: ..
+      dockerfile: glin-explorer/backend/Dockerfile
+    container_name: glinscan-api
+    command: api
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      API_HOST: ${API_HOST}
+      API_PORT: ${API_PORT}
+      RUST_LOG: ${RUST_LOG}
+    ports:
+      - "${API_PORT}:${API_PORT}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Contract Verifier
+  verifier:
+    build:
+      context: ..
+      dockerfile: glin-explorer/backend/Dockerfile
+    container_name: glinscan-verifier
+    command: verifier
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      VERIFIER_WORKSPACE: ${VERIFIER_WORKSPACE}
+      RUST_LOG: ${RUST_LOG}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - verifier_workspace:${VERIFIER_WORKSPACE}
+
+volumes:
+  postgres_data:
+  verifier_workspace:

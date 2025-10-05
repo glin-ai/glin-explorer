@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE contracts SET verified = true WHERE address = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ca00418bb286ee7259d39814b5ff82024bab2a7ec7cc713ac614707d7ac4e3cf"
+}

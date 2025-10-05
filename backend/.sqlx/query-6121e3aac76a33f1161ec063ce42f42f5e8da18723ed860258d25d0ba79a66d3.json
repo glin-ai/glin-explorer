@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT balance, nonce FROM accounts WHERE address = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "balance",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "nonce",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "6121e3aac76a33f1161ec063ce42f42f5e8da18723ed860258d25d0ba79a66d3"
+}

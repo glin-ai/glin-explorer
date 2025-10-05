@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    UPDATE contract_verifications\n                    SET status = 'success', verified_at = NOW()\n                    WHERE id = $1\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a51c480e5312ae1afadf897c2f0fcf9cf170771991c4eb5b1ddc4104f9aabc9b"
+}

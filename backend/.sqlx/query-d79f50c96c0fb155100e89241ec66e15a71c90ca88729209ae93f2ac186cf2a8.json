@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE contract_verifications SET status = 'building' WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d79f50c96c0fb155100e89241ec66e15a71c90ca88729209ae93f2ac186cf2a8"
+}
